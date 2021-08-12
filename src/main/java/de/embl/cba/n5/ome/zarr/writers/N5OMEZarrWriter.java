@@ -1,33 +1,12 @@
-/**
- * Copyright (c) 2017, Stephan Saalfeld
- * All rights reserved.
- * <p>
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions are met:
- * <p>
- * 1. Redistributions of source code must retain the above copyright notice,
- * this list of conditions and the following disclaimer.
- * 2. Redistributions in binary form must reproduce the above copyright notice,
- * this list of conditions and the following disclaimer in the documentation
- * and/or other materials provided with the distribution.
- * <p>
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
- * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
- * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
- * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
- * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
- * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
- * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
- * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
- * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
- * POSSIBILITY OF SUCH DAMAGE.
- */
 package de.embl.cba.n5.ome.zarr.writers;
 
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonPrimitive;
+import de.embl.cba.n5.ome.zarr.readers.N5OmeZarrReader;
+import de.embl.cba.n5.ome.zarr.util.OmeZArrayAttributes;
+import de.embl.cba.n5.ome.zarr.util.ZArrayAttributes;
+import de.embl.cba.n5.ome.zarr.util.ZarrDatasetAttributes;
 import net.imglib2.Cursor;
 import net.imglib2.FinalInterval;
 import net.imglib2.img.array.ArrayImg;
@@ -37,7 +16,9 @@ import net.imglib2.type.numeric.integer.ByteType;
 import net.imglib2.util.Intervals;
 import net.imglib2.view.Views;
 import org.janelia.saalfeldlab.n5.*;
-import org.janelia.saalfeldlab.n5.zarr.*;
+import org.janelia.saalfeldlab.n5.zarr.DType;
+import org.janelia.saalfeldlab.n5.zarr.Utils;
+import org.janelia.saalfeldlab.n5.zarr.ZarrCompressor;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -52,13 +33,10 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.stream.Stream;
 
-/**
- * @author Stephan Saalfeld
- */
-public class N5ZarrWriter extends N5ZarrReader implements N5Writer {
+public class N5OMEZarrWriter extends N5OmeZarrReader implements N5Writer {
 
     /**
-     * Opens an {@link N5ZarrWriter} at a given base path with a custom
+     * Opens an {@link N5OMEZarrWriter} at a given base path with a custom
      * {@link GsonBuilder} to support custom attributes.
      * <p>
      * If the base path does not exist, it will be created.
@@ -73,14 +51,14 @@ public class N5ZarrWriter extends N5ZarrReader implements N5Writer {
      *                               attribute keys for other purposes.
      * @throws IOException if the base path cannot be written to or cannot be created,
      */
-    public N5ZarrWriter(final String basePath, final GsonBuilder gsonBuilder, final String dimensionSeparator, final boolean mapN5DatasetAttributes) throws IOException {
+    public N5OMEZarrWriter(final String basePath, final GsonBuilder gsonBuilder, final String dimensionSeparator, final boolean mapN5DatasetAttributes) throws IOException {
 
         super(basePath, gsonBuilder, dimensionSeparator, mapN5DatasetAttributes);
         createDirectories(Paths.get(basePath));
     }
 
     /**
-     * Opens an {@link N5ZarrWriter} at a given base path with a custom
+     * Opens an {@link N5OMEZarrWriter} at a given base path with a custom
      * {@link GsonBuilder} to support custom attributes.
      * <p>
      * If the base path does not exist, it will be created.
@@ -90,13 +68,13 @@ public class N5ZarrWriter extends N5ZarrReader implements N5Writer {
      * @param dimensionSeparator
      * @throws IOException
      */
-    public N5ZarrWriter(final String basePath, final GsonBuilder gsonBuilder, final String dimensionSeparator) throws IOException {
+    public N5OMEZarrWriter(final String basePath, final GsonBuilder gsonBuilder, final String dimensionSeparator) throws IOException {
 
         this(basePath, gsonBuilder, dimensionSeparator, true);
     }
 
     /**
-     * Opens an {@link N5ZarrWriter} at a given base path.
+     * Opens an {@link N5OMEZarrWriter} at a given base path.
      * <p>
      * If the base path does not exist, it will be created.
      *
@@ -109,13 +87,13 @@ public class N5ZarrWriter extends N5ZarrReader implements N5Writer {
      *                               attribute keys for other purposes.
      * @throws IOException
      */
-    public N5ZarrWriter(final String basePath, final String dimensionSeparator, final boolean mapN5DatasetAttributes) throws IOException {
+    public N5OMEZarrWriter(final String basePath, final String dimensionSeparator, final boolean mapN5DatasetAttributes) throws IOException {
 
         this(basePath, new GsonBuilder(), dimensionSeparator, mapN5DatasetAttributes);
     }
 
     /**
-     * Opens an {@link N5ZarrWriter} at a given base path.
+     * Opens an {@link N5OMEZarrWriter} at a given base path.
      * <p>
      * If the base path does not exist, it will be created.
      *
@@ -127,13 +105,13 @@ public class N5ZarrWriter extends N5ZarrReader implements N5Writer {
      *                               attribute keys for other purposes.
      * @throws IOException
      */
-    public N5ZarrWriter(final String basePath, final boolean mapN5DatasetAttributes) throws IOException {
+    public N5OMEZarrWriter(final String basePath, final boolean mapN5DatasetAttributes) throws IOException {
 
-        this(basePath, new GsonBuilder(), ".", mapN5DatasetAttributes);
+        this(basePath, new GsonBuilder(), "/", mapN5DatasetAttributes);
     }
 
     /**
-     * Opens an {@link N5ZarrWriter} at a given base path with a custom
+     * Opens an {@link N5OMEZarrWriter} at a given base path with a custom
      * {@link GsonBuilder} to support custom attributes.
      * <p>
      * If the base path does not exist, it will be created.
@@ -142,13 +120,13 @@ public class N5ZarrWriter extends N5ZarrReader implements N5Writer {
      * @param gsonBuilder
      * @throws IOException if the base path cannot be written to or cannot be created,
      */
-    public N5ZarrWriter(final String basePath, final GsonBuilder gsonBuilder) throws IOException {
+    public N5OMEZarrWriter(final String basePath, final GsonBuilder gsonBuilder) throws IOException {
 
-        this(basePath, gsonBuilder, ".");
+        this(basePath, gsonBuilder, "/");
     }
 
     /**
-     * Opens an {@link N5ZarrWriter} at a given base path.
+     * Opens an {@link N5OMEZarrWriter} at a given base path.
      * <p>
      * If the base path does not exist, it will be created.
      * <p>
@@ -160,7 +138,7 @@ public class N5ZarrWriter extends N5ZarrReader implements N5Writer {
      * @param gsonBuilder
      * @throws IOException if the base path cannot be written to or cannot be created,
      */
-    public N5ZarrWriter(final String basePath) throws IOException {
+    public N5OMEZarrWriter(final String basePath) throws IOException {
 
         this(basePath, new GsonBuilder());
     }
@@ -406,7 +384,7 @@ public class N5ZarrWriter extends N5ZarrReader implements N5Writer {
 
         final Path path = groupPath.resolve(zgroupFile);
         final HashMap<String, JsonElement> map = new HashMap<>();
-        map.put("zarr_format", new JsonPrimitive(N5ZarrReader.VERSION.getMajor()));
+        map.put("zarr_format", new JsonPrimitive(N5OmeZarrReader.VERSION.getMajor()));
 
         try (final N5FSReader.LockedFileChannel lockedFileChannel = N5FSReader.LockedFileChannel.openForWriting(path)) {
             lockedFileChannel.getFileChannel().truncate(0);
@@ -439,15 +417,16 @@ public class N5ZarrWriter extends N5ZarrReader implements N5Writer {
         final int[] chunks = datasetAttributes.getBlockSize().clone();
         Utils.reorder(chunks);
 
-        final ZArrayAttributes zArrayAttributes = new ZArrayAttributes(
-                N5ZarrReader.VERSION.getMajor(),
+        final OmeZArrayAttributes zArrayAttributes = new OmeZArrayAttributes(
+                N5OmeZarrReader.VERSION.getMajor(),
                 shape,
                 chunks,
                 new DType(datasetAttributes.getDataType()),
                 ZarrCompressor.fromCompression(datasetAttributes.getCompression()),
                 "0",
                 'C',
-                null);
+                null,
+                dimensionSeparator);
 
         setZArrayAttributes(pathName, zArrayAttributes);
     }
@@ -456,11 +435,14 @@ public class N5ZarrWriter extends N5ZarrReader implements N5Writer {
     public void createDataset(
             final String pathName,
             final DatasetAttributes datasetAttributes) throws IOException {
+        int lastSlashIndex = removeTrailingSlash(pathName).lastIndexOf("/");
 
-        /* create parent groups */
-        final String parentGroup = pathName.substring(0, removeTrailingSlash(pathName).lastIndexOf('/'));
-        if (!parentGroup.equals(""))
-            createGroup(parentGroup);
+        if (lastSlashIndex != -1) {
+            /* create parent groups */
+            final String parentGroup = pathName.substring(0, removeTrailingSlash(pathName).lastIndexOf('/'));
+            if (!parentGroup.equals(""))
+                createGroup(parentGroup);
+        }
 
         final Path path = Paths.get(basePath, pathName);
         createDirectories(path);
@@ -487,7 +469,7 @@ public class N5ZarrWriter extends N5ZarrReader implements N5Writer {
             if (mapN5DatasetAttributes && datasetExists(pathName)) {
 
                 attributes = new HashMap<>(attributes);
-                ZArrayAttributes zArrayAttributes = getZArraryAttributes(pathName);
+                ZArrayAttributes zArrayAttributes = getZArrayAttributes(pathName);
                 long[] shape;
                 int[] chunks;
                 final DType dtype;
@@ -528,7 +510,7 @@ public class N5ZarrWriter extends N5ZarrReader implements N5Writer {
                 } else
                     compressor = zArrayAttributes.getCompressor();
 
-                zArrayAttributes = new ZArrayAttributes(
+                zArrayAttributes = new OmeZArrayAttributes(
                         zArrayAttributes.getZarrFormat(),
                         shape,
                         chunks,
@@ -536,7 +518,8 @@ public class N5ZarrWriter extends N5ZarrReader implements N5Writer {
                         compressor,
                         zArrayAttributes.getFillValue(),
                         zArrayAttributes.getOrder(),
-                        zArrayAttributes.getFilters());
+                        zArrayAttributes.getFilters(),
+                        dimensionSeparator);
 
                 setZArrayAttributes(pathName, zArrayAttributes);
             }
@@ -556,20 +539,19 @@ public class N5ZarrWriter extends N5ZarrReader implements N5Writer {
             final String pathName,
             final DatasetAttributes datasetAttributes,
             final DataBlock<T> dataBlock) throws IOException {
-
         final ZarrDatasetAttributes zarrDatasetAttributes;
         if (datasetAttributes instanceof ZarrDatasetAttributes)
             zarrDatasetAttributes = (ZarrDatasetAttributes) datasetAttributes;
         else
-            zarrDatasetAttributes = getZArraryAttributes(pathName).getDatasetAttributes();
+            zarrDatasetAttributes = getZArrayAttributes(pathName).getDatasetAttributes();
 
         final Path path = Paths.get(
                 basePath,
                 removeLeadingSlash(pathName),
-                getZarrDataBlockPath(
+                getZarrDataBlockString(
                         dataBlock.getGridPosition(),
                         dimensionSeparator,
-                        zarrDatasetAttributes.isRowMajor()).toString());
+                        zarrDatasetAttributes.isRowMajor()));
         createDirectories(path.getParent());
         try (final N5FSReader.LockedFileChannel lockedChannel = N5FSReader.LockedFileChannel.openForWriting(path)) {
 
@@ -590,15 +572,15 @@ public class N5ZarrWriter extends N5ZarrReader implements N5Writer {
         if (datasetAttributes instanceof ZarrDatasetAttributes)
             zarrDatasetAttributes = (ZarrDatasetAttributes) datasetAttributes;
         else
-            zarrDatasetAttributes = getZArraryAttributes(pathName).getDatasetAttributes();
+            zarrDatasetAttributes = getZArrayAttributes(pathName).getDatasetAttributes();
 
         final Path path = Paths.get(
                 basePath,
                 removeLeadingSlash(pathName),
-                getZarrDataBlockPath(
+                getZarrDataBlockString(
                         gridPosition,
                         dimensionSeparator,
-                        zarrDatasetAttributes.isRowMajor()).toString());
+                        zarrDatasetAttributes.isRowMajor()));
 
         if (!Files.exists(path))
             return true;
@@ -641,4 +623,5 @@ public class N5ZarrWriter extends N5ZarrReader implements N5Writer {
 
         return !Files.exists(path);
     }
+
 }

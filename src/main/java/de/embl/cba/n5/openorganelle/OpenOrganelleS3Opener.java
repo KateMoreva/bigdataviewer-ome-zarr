@@ -1,30 +1,29 @@
-package de.embl.cba.n5.ome.zarr.openers;
+package de.embl.cba.n5.openorganelle;
 
-import de.embl.cba.n5.ome.zarr.loaders.N5S3OMEZarrImageLoader;
 import de.embl.cba.n5.util.openers.S3Opener;
 import mpicbg.spim.data.SpimData;
 import net.imglib2.util.Cast;
 
 import java.io.IOException;
 
-public class OMEZarrS3Opener extends S3Opener {
+public class OpenOrganelleS3Opener extends S3Opener {
 
-    public OMEZarrS3Opener(String serviceEndpoint, String signingRegion, String bucketName) {
+    public OpenOrganelleS3Opener(String serviceEndpoint, String signingRegion, String bucketName) {
         super(serviceEndpoint, signingRegion, bucketName);
     }
 
-    public OMEZarrS3Opener(String url) {
+    public OpenOrganelleS3Opener(String url) {
         super(url);
     }
 
     public static SpimData readURL(String url) throws IOException {
-        final OMEZarrS3Opener reader = new OMEZarrS3Opener(url);
+        final OpenOrganelleS3Opener reader = new OpenOrganelleS3Opener(url);
         return reader.readKey(reader.getKey());
     }
 
     @Override
     public SpimData readKey(String key) throws IOException {
-        N5S3OMEZarrImageLoader imageLoader = new N5S3OMEZarrImageLoader(serviceEndpoint, signingRegion, bucketName, key, ".");
+        OpenOrganelleN5S3ImageLoader imageLoader = new OpenOrganelleN5S3ImageLoader(serviceEndpoint, signingRegion, bucketName, key);
         return new SpimData(null, Cast.unchecked(imageLoader.getSequenceDescription()), imageLoader.getViewRegistrations());
     }
 }
